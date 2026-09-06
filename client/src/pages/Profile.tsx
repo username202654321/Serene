@@ -1,0 +1,18 @@
+import { useState } from "react";
+import { Check, LogOut, Palette, Sparkles, Star, UserRound } from "lucide-react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import ProfileOrb from "@/components/ProfileOrb";
+
+export default function Profile() {
+  const [, navigate] = useLocation();
+  const { user, loading, logout, updateProfile, claimDailyStars } = useAuth();
+  const [name, setName] = useState(user?.displayName || user?.username || "");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [saved, setSaved] = useState(false);
+  if (loading) return <div className="profile-page page-enter"><div className="profile-loading">loading profile…</div></div>;
+  if (!user) { navigate("/login"); return null; }
+  const save = async () => { await updateProfile({ displayName: name.trim() || user.username, bio }); setSaved(true); setTimeout(() => setSaved(false), 1500); };
+  const daily = async () => { try { const reward = await claimDailyStars(); alert(`+${reward} Stars collected`); } catch (error) { alert(error instanceof Error ? error.message : "Already collected."); } };
+  return <div className="profile-page page-enter"><section className="profile-hero"><div className="profile-hero-orb"><ProfileOrb username={user.username} seed={user.avatarSeed} animation={user.avatarAnimation} frame={user.avatarFrame} size="lg" /></div><div className="profile-hero-copy"><span className="eyebrow">Profile</span><h1>{user.displayName || user.username}</h1><p>@{user.username}</p><div className="profile-stats"><span><Star size={14} /> {user.stars.toLocaleString()} Stars</span><span><Sparkles size={14} /> {user.ownedItems.length} shop items</span></div></div><button className="secondary-button small" onClick={async () => { await logout(); navigate("/"); }}><LogOut size={14} /> Log out</button></section><div className="profile-grid"><section className="profile-card"><div className="card-heading"><div><span className="eyebrow">Identity</span><h2>Your profile</h2></div><UserRound size={18} /></div><label className="profile-field"><span>Display name</span><input value={name} onChange={(e) => setName(e.target.value)} maxLength={30} /></label><label className="profile-field"><span>Bio</span><textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="say something about your Serene space…" /></label><button className="primary-button small" onClick={save}>{saved ? <><Check size={14} /> Saved</> : "Save profile"}</button></section><section className="profile-card profile-rewards"><div className="card-heading"><div><span className="eyebrow">Stars</span><h2>Collect more</h2></div><Star size={18} /></div><div className="stars-balance"><strong>{user.stars.toLocaleString()}</strong><span>Stars</span></div><p>Claim your daily Stars once a day. Spend them in the Shop on themes, particles, avatar animations, and profile frames.</p><button className="primary-button" onClick={daily}><Star size={14} /> Claim daily Stars</button></section><section className="profile-card"><div className="card-heading"><div><span className="eyebrow">Customize</span><h2>Quick profile effects</h2></div><Palette size={18} /></div><div className="profile-options"><button onClick={() => updateProfile({ avatarAnimation: user.avatarAnimation === "float" ? "spin" : "float" })}>Avatar animation <b>{user.avatarAnimation}</b></button><button onClick={() => updateProfile({ avatarFrame: user.avatarFrame === "none" ? "orbit" : "none" })}>Profile frame <b>{user.avatarFrame}</b></button><button onClick={() => updateProfile({ particles: user.particles === "dust" ? "spark" : "dust" })}>Particles <b>{user.particles}</b></button></div></section></div></div>;
+}
