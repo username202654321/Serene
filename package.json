@@ -5,9 +5,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "concurrently -k \"pnpm run server:dev\" \"vite --host\"",
-    "server:dev": "tsx server/index.ts",
+    "server:dev": "node --env-file=.env --import tsx server/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx server/migrate.ts",
+    "db:migrate": "node --env-file-if-exists=.env --import tsx server/migrate.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",

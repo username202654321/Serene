@@ -41,7 +41,7 @@ create table if not exists stars_transactions (
   created_at timestamptz not null default now()
 );
 create index if not exists stars_user_created_idx on stars_transactions(user_id, created_at);
-create unique index if not exists stars_daily_claim_idx on stars_transactions(user_id, kind, (created_at::date)) where kind = 'daily';
+create unique index if not exists stars_daily_claim_idx on stars_transactions(user_id, kind, reference_id) where kind = 'daily';
 
 create table if not exists shop_items (
   id text primary key,

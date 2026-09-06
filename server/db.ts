@@ -141,11 +141,12 @@ export async function deleteSession(token: string | undefined) {
 
 export async function claimDailyStars(userId: string): Promise<{ user: User; reward: number } | { error: "already_claimed" }> {
   const result = await sql.begin(async (transaction) => {
-    const existing = await transaction`select 1 from stars_transactions where user_id = ${userId} and kind = 'daily' and created_at::date = current_date limit 1`;
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = await transaction`select 1 from stars_transactions where user_id = ${userId} and kind = 'daily' and reference_id = ${today} limit 1`;
     if (existing.length) return null;
     const reward = 75;
     await transaction`update users set stars = stars + ${reward}, updated_at = now() where id = ${userId} and stars + ${reward} >= 0`;
-    await transaction`insert into stars_transactions (user_id, amount, kind) values (${userId}, ${reward}, 'daily')`;
+    await transaction`insert into stars_transactions (user_id, amount, kind, reference_id) values (${userId}, ${reward}, 'daily', ${today})`;
     return reward;
   });
   if (result === null) return { error: "already_claimed" };

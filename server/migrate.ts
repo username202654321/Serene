@@ -16,7 +16,7 @@ async function main() {
 		if (appliedIds.has(id)) continue;
 		await sql.begin(async (transaction) => {
 			await transaction.unsafe(await readFile(path.join(migrationDirectory, file), "utf8"));
-			await transaction`insert into serene_migrations (id) values (${id})`;
+			await transaction`insert into serene_migrations (id) values (${id}) on conflict (id) do nothing`;
 		});
 		console.log(`Applied ${id}.`);
 	}
