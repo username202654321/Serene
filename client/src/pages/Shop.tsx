@@ -10,10 +10,11 @@ const labels = { theme: "Themes", particles: "Particles", avatarAnimation: "Avat
 async function api<T>(path: string, options?: RequestInit) { const response = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) }, ...options }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "Shop request failed."); return data as T; }
 
 export default function Shop() {
-  const { user, buyItem, equipItem, unequipItem } = useAuth();
+  const { user, loading: authLoading, buyItem, equipItem, unequipItem } = useAuth();
   const [items, setItems] = useState<ShopItem[]>([]); const [transactions, setTransactions] = useState<Transaction[]>([]); const [filter, setFilter] = useState("All"); const [busy, setBusy] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
   useEffect(() => { if (!user) { setLoading(false); return; } void Promise.all([api<{ items: ShopItem[] }>("/api/shop/items"), api<{ transactions: Transaction[] }>("/api/stars/transactions")]).then(([catalog, ledger]) => { setItems(catalog.items); setTransactions(ledger.transactions); }).catch((err: Error) => setError(err.message)).finally(() => setLoading(false)); }, [user]);
   const filters = ["All", ...Array.from(new Set(items.map((item) => item.kind)))]; const visible = useMemo(() => filter === "All" ? items : items.filter((item) => item.kind === filter), [filter, items]);
+  if (authLoading) return <div className="shop-page page-enter"><div className="profile-loading">Loading Shop...</div></div>;
   if (!user) return <div className="shop-page page-enter"><div className="shop-login-note">Sign in to spend Stars in the Serene Shop.</div></div>;
   const purchase = async (item: ShopItem) => { if (!window.confirm(`Purchase ${item.name} for ${item.price.toLocaleString()} Stars?`)) return; setBusy(item.id); setError(""); try { await buyItem(item.id); const ledger = await api<{ transactions: Transaction[] }>("/api/stars/transactions"); setTransactions(ledger.transactions); } catch (err) { setError(err instanceof Error ? err.message : "Purchase failed."); } finally { setBusy(""); } };
   const equip = async (item: ShopItem) => { setBusy(item.id); setError(""); try { await equipItem(item.id); } catch (err) { setError(err instanceof Error ? err.message : "Could not equip item."); } finally { setBusy(""); } };

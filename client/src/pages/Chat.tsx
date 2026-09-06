@@ -18,7 +18,7 @@ async function api<T>(path: string, options?: RequestInit) {
 const emojiFallback: Emoji[] = ["😀", "😂", "😍", "😎", "🥳", "🤔", "🙌", "👏", "🔥", "✨", "❤️", "✅", "🎉", "🚀", "🌿", "☕"].map((character) => ({ character, unicodeName: character }));
 
 export default function Chat() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [servers, setServers] = useState<Server[]>([]);
   const [serverId, setServerId] = useState("");
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -84,7 +84,7 @@ export default function Chat() {
   const deleteChannel = async (item: Channel) => { if (!window.confirm(`Delete #${item.name}?`)) return; try { await api(`/api/chat/channels/${item.id}`, { method: "DELETE" }); const next = channels.filter((entry) => entry.id !== item.id); setChannels(next); setChannelId(next[0]?.id || ""); } catch (err) { setError(err instanceof Error ? err.message : "Could not delete channel."); } };
   const deleteServer = async () => { if (!server || !window.confirm(`Delete ${server.name}?`)) return; try { await api(`/api/chat/servers/${server.id}`, { method: "DELETE" }); const next = servers.filter((entry) => entry.id !== server.id); setServers(next); setServerId(next[0]?.id || ""); } catch (err) { setError(err instanceof Error ? err.message : "Could not delete server."); } };
 
-  if (loading) return <div className="profile-loading">Loading chat...</div>;
+  if (authLoading || loading) return <div className="profile-loading">Loading chat...</div>;
   if (!user) return <div className="chat-page page-enter"><div className="studio-empty">Sign in to join Serene chat.</div></div>;
   return <div className="chat-page page-enter">
     <div className="page-title-row compact-title"><div><span className="eyebrow">Community</span><h1>Chat rooms.</h1><p>Servers, categories, and channels that stay inside Serene.</p></div>{isAdmin && <button className={`secondary-button small ${ownerTools ? "is-active" : ""}`} onClick={() => setOwnerTools((value) => !value)}><Settings2 size={14} /> Owner tools</button>}</div>
