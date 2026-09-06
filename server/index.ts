@@ -138,7 +138,7 @@ app.patch("/api/profile", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const patch: Record<string, string> = {};
-  for (const key of ["displayName", "bio", "avatarSeed"]) if (typeof req.body?.[key] === "string") patch[key] = req.body[key];
+  for (const key of ["displayName", "bio", "avatarSeed", "bannerColor"]) if (typeof req.body?.[key] === "string") patch[key] = req.body[key].slice(0, key === "bio" ? 160 : 80);
   res.json({ user: publicUser((await updateProfile(user.id, patch)) as User) });
 }));
 app.post("/api/stars/daily", asyncRoute(async (req, res) => {
@@ -211,7 +211,7 @@ app.post("/api/bookmarks", asyncRoute(async (req, res) => {
   const url = String(req.body?.url || "").trim();
   const title = String(req.body?.title || "").trim().slice(0, 160);
   if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Only valid web addresses can be bookmarked." });
-  const rows = await sql`insert into bookmarks (user_id, url, title) values (${user.id}, ${url}, ${title}) on conflict do nothing returning id, url, title, created_at as "createdAt"`;
+  const rows = await sql`insert into bookmarks (user_id, url, title) values (${user.id}, ${url}, ${title}) on conflict (user_id, url) do update set title = excluded.title returning id, url, title, created_at as "createdAt"`;
   res.status(201).json({ bookmark: rows[0] ?? null });
 }));
 app.delete("/api/bookmarks/:id", asyncRoute(async (req, res) => {
@@ -232,13 +232,19 @@ app.post("/api/browser/history", asyncRoute(async (req, res) => {
   const url = String(req.body?.url || "").trim();
   const title = String(req.body?.title || "").trim().slice(0, 160);
   if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Only web addresses can be saved in history." });
-  await sql`insert into browser_history (user_id, url, title) values (${user.id}, ${url}, ${title})`;
-  res.status(201).json({ ok: true });
+  const rows = await sql`insert into browser_history (user_id, url, title) values (${user.id}, ${url}, ${title}) on conflict (user_id, url) do update set title = coalesce(nullif(excluded.title, ''), browser_history.title), created_at = now() returning id, url, title, created_at as "createdAt"`;
+  res.status(201).json({ history: rows[0] });
 }));
 app.delete("/api/browser/history", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   await sql`delete from browser_history where user_id = ${user.id}`;
+  res.json({ ok: true });
+}));
+app.delete("/api/browser/history/:id", asyncRoute(async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  await sql`delete from browser_history where id = ${req.params.id} and user_id = ${user.id}`;
   res.json({ ok: true });
 }));
 app.get("/api/games/activity", asyncRoute(async (req, res) => {
@@ -268,6 +274,12 @@ app.post("/api/notifications/:id/read", asyncRoute(async (req, res) => {
   await sql`update notifications set read_at = coalesce(read_at, now()) where id = ${req.params.id} and user_id = ${user.id}`;
   res.json({ ok: true });
 }));
+app.post("/api/notifications/read-all", asyncRoute(async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  await sql`update notifications set read_at = coalesce(read_at, now()) where user_id = ${user.id}`;
+  res.json({ ok: true });
+}));
 app.get("/api/chat/servers", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
@@ -289,6 +301,12 @@ app.post("/api/chat/servers", asyncRoute(async (req, res) => {
   const rows = await sql`insert into chat_servers (name, icon, owner_id) values (${name}, ${String(req.body?.icon || "").slice(0, 200)}, ${user.id}) returning id, name, icon, owner_id as "ownerId"`;
   res.status(201).json({ server: rows[0] });
 }));
+app.delete("/api/chat/servers/:serverId", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  await sql`delete from chat_servers where id = ${req.params.serverId} and (${user.role} = 'owner' or owner_id = ${user.id})`;
+  res.json({ ok: true });
+}));
 app.get("/api/chat/servers/:serverId/channels", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
@@ -308,11 +326,42 @@ app.post("/api/chat/servers/:serverId/channels", asyncRoute(async (req, res) => 
   });
   res.status(201).json({ channel: rows[0] });
 }));
+app.patch("/api/chat/channels/:channelId", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const name = String(req.body?.name || "").trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").slice(0, 40);
+  if (!name) return res.status(400).json({ error: "A channel name is required." });
+  const rows = await sql`update chat_channels c set name = ${name} from chat_categories cat join chat_servers s on s.id = cat.server_id where c.id = ${req.params.channelId} and c.category_id = cat.id and (${user.role} = 'owner' or s.owner_id = ${user.id}) returning c.id, c.name, c.category_id as "categoryId"`;
+  if (!rows[0]) return res.status(404).json({ error: "Channel not found." });
+  res.json({ channel: rows[0] });
+}));
+app.delete("/api/chat/channels/:channelId", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const rows = await sql`delete from chat_channels c using chat_categories cat, chat_servers s where c.id = ${req.params.channelId} and c.category_id = cat.id and cat.server_id = s.id and (${user.role} = 'owner' or s.owner_id = ${user.id}) returning c.id`;
+  if (!rows[0]) return res.status(404).json({ error: "Channel not found." });
+  res.json({ ok: true });
+}));
 app.get("/api/chat/channels/:channelId/messages", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
-  const messages = await sql`select m.id, m.body, m.author_id as "authorId", u.username, m.created_at as "createdAt" from messages m join users u on u.id = m.author_id where m.channel_id = ${req.params.channelId} order by m.created_at asc limit 200`;
+  const messages = await sql`select m.id, m.body, m.author_id as "authorId", u.username, p.display_name as "displayName", p.avatar_seed as "avatarSeed", m.created_at as "createdAt", coalesce((select json_agg(json_build_object('emoji', r.emoji, 'count', r.count, 'reacted', r.reacted)) from (select emoji, count(*)::int as count, bool_or(user_id = ${user.id}) as reacted from message_reactions where message_id = m.id group by emoji) r), '[]'::json) as reactions from messages m join users u on u.id = m.author_id left join profiles p on p.user_id = u.id where m.channel_id = ${req.params.channelId} order by m.created_at asc limit 200`;
   res.json({ messages });
+}));
+app.post("/api/chat/messages/:messageId/reactions", asyncRoute(async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const emoji = String(req.body?.emoji || "").trim().slice(0, 16);
+  if (!emoji) return res.status(400).json({ error: "Choose an emoji." });
+  const rows = await sql`insert into message_reactions (message_id, user_id, emoji) select ${req.params.messageId}, ${user.id}, ${emoji} where exists (select 1 from messages where id = ${req.params.messageId}) on conflict (message_id, user_id, emoji) do nothing returning message_id as "messageId", emoji`;
+  if (!rows[0]) return res.status(404).json({ error: "Message not found or reaction already added." });
+  res.status(201).json({ reaction: rows[0] });
+}));
+app.delete("/api/chat/messages/:messageId/reactions/:emoji", asyncRoute(async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  await sql`delete from message_reactions where message_id = ${req.params.messageId} and user_id = ${user.id} and emoji = ${req.params.emoji}`;
+  res.json({ ok: true });
 }));
 app.post("/api/chat/channels/:channelId/messages", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
@@ -370,6 +419,29 @@ app.post("/api/announcements", asyncRoute(async (req, res) => {
   const rows = await sql`insert into announcements (title, body, status, created_by, published_at) values (${title}, ${body}, 'published', ${user.id}, now()) returning id, title, body`;
   await sql`insert into notifications (user_id, kind, title, body) select id, 'announcement', ${title}, ${body} from users where id <> ${user.id}`;
   res.status(201).json({ announcement: rows[0] });
+}));
+app.get("/api/studio/announcements", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const announcements = await sql`select id, title, body, status, published_at as "publishedAt" from announcements order by created_at desc limit 100`;
+  res.json({ announcements });
+}));
+app.patch("/api/studio/announcements/:id", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const status = req.body?.status === "published" ? "published" : "draft";
+  const title = typeof req.body?.title === "string" ? req.body.title.trim().slice(0, 100) : undefined;
+  const body = typeof req.body?.body === "string" ? req.body.body.trim().slice(0, 1000) : undefined;
+  const rows = await sql`update announcements set title = coalesce(${title ?? null}, title), body = coalesce(${body ?? null}, body), status = ${status}, published_at = case when ${status} = 'published' then coalesce(published_at, now()) else null end where id = ${req.params.id} returning id, title, body, status, published_at as "publishedAt"`;
+  if (!rows[0]) return res.status(404).json({ error: "Announcement not found." });
+  if (status === "published") await sql`insert into notifications (user_id, kind, title, body) select id, 'announcement', ${rows[0].title}, ${rows[0].body} from users where id <> ${user.id}`;
+  res.json({ announcement: rows[0] });
+}));
+app.delete("/api/studio/announcements/:id", asyncRoute(async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  await sql`delete from announcements where id = ${req.params.id}`;
+  res.json({ ok: true });
 }));
 
 const staticPath = isProduction ? path.resolve(__dirname, "public") : path.resolve(__dirname, "..", "dist", "public");

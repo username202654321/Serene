@@ -21,6 +21,7 @@ export const profiles = pgTable("profiles", {
   avatarFrame: text("avatar_frame").notNull().default("none"),
   siteTheme: text("site_theme").notNull().default("white"),
   particles: text("particles").notNull().default("dust"),
+  bannerColor: text("banner_color").notNull().default("#101216"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -66,6 +67,7 @@ export const chatServers = pgTable("chat_servers", { id: uuid("id").primaryKey()
 export const chatCategories = pgTable("chat_categories", { id: uuid("id").primaryKey().defaultRandom(), serverId: uuid("server_id").notNull().references(() => chatServers.id, { onDelete: "cascade" }), name: text("name").notNull() });
 export const chatChannels = pgTable("chat_channels", { id: uuid("id").primaryKey().defaultRandom(), categoryId: uuid("category_id").notNull().references(() => chatCategories.id, { onDelete: "cascade" }), name: text("name").notNull() });
 export const messages = pgTable("messages", { id: uuid("id").primaryKey().defaultRandom(), channelId: uuid("channel_id").notNull().references(() => chatChannels.id, { onDelete: "cascade" }), authorId: uuid("author_id").notNull().references(() => users.id), body: text("body").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() });
+export const messageReactions = pgTable("message_reactions", { messageId: uuid("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }), userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), emoji: text("emoji").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() });
 export const notifications = pgTable("notifications", { id: uuid("id").primaryKey().defaultRandom(), userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), kind: text("kind").notNull(), title: text("title").notNull(), body: text("body").notNull(), readAt: timestamp("read_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() });
 export const bookmarks = pgTable("bookmarks", { id: uuid("id").primaryKey().defaultRandom(), userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), url: text("url").notNull(), title: text("title").notNull().default(""), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() });
 export const userSettings = pgTable("user_settings", { userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }), settings: jsonb("settings").notNull().default({}), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow() });

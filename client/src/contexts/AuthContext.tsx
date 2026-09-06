@@ -11,6 +11,7 @@ export type UserProfile = {
   avatarFrame: string;
   siteTheme: string;
   particles: string;
+  bannerColor: string;
   stars: number;
   ownedItems: string[];
   role: "user" | "admin" | "owner";

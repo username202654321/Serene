@@ -1,6 +1,15 @@
 export type BrowserRuntime = "direct" | "scramjet" | "blocked";
 
-const scramjetProxyTemplate = import.meta.env.VITE_SCRAMJET_PROXY_URL as string | undefined;
+const configuredScramjetProxy = import.meta.env.VITE_SCRAMJET_PROXY_URL as string | undefined;
+const scramjetProxyTemplate = (() => {
+  if (!configuredScramjetProxy?.includes("{url}")) return undefined;
+  try {
+    const hostname = new URL(configuredScramjetProxy.replace("{url}", "https://example.com")).hostname;
+    return hostname.endsWith(".example") || hostname === "example.com" || hostname === "www.example.com" ? undefined : configuredScramjetProxy;
+  } catch {
+    return undefined;
+  }
+})();
 const blockedHosts = new Set(["www.youtube.com", "youtube.com", "github.com", "www.github.com", "duckduckgo.com"]);
 
 export type BrowserDestination = {
@@ -18,7 +27,7 @@ export function resolveBrowserDestination(url: string): BrowserDestination {
   }
   if (!/^https?:$/.test(parsed.protocol)) return { runtime: "blocked", url, reason: "Only HTTP and HTTPS destinations are supported." };
   if (scramjetProxyTemplate?.includes("{url}")) return { runtime: "scramjet", url: scramjetProxyTemplate.replace("{url}", encodeURIComponent(parsed.toString())) };
-  if (blockedHosts.has(parsed.hostname)) return { runtime: "blocked", url, reason: "This destination commonly blocks direct framing. Configure a permitted Scramjet runtime for supported browsing." };
+  if (blockedHosts.has(parsed.hostname)) return { runtime: "blocked", url, reason: hasScramjetRuntime() ? "This destination cannot be displayed directly." : "Proxy unavailable. Configure an authorized Scramjet runtime to open this destination." };
   return { runtime: "direct", url: parsed.toString() };
 }
 

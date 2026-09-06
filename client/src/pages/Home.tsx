@@ -1,4 +1,4 @@
-import { ArrowUpRight, Gamepad2, Globe2, Play, Search, Sparkles } from "lucide-react";
+import { ArrowUpRight, Gamepad2, Globe2, Play, Search } from "lucide-react";
 import { Link } from "wouter";
 import { games } from "@/lib/data";
 import { useSerene } from "@/contexts/SereneContext";
@@ -13,15 +13,13 @@ export default function Home() {
     <div className="home-page serene-home page-enter">
       <section className="serene-hero">
         <div className="serene-hero-center">
-          <span className="serene-hero-mark" aria-hidden="true">✦</span>
           <h1>Serene</h1>
-          <p>a quiet place for games, browsing, and useful things.</p>
-          <Link href="/search" className="serene-search"><Search size={17} /><span>search anything</span><kbd>⌘ K</kbd></Link>
+          <p>A quiet place for games, browsing, and useful things.</p>
+          <Link href="/search" className="serene-search"><Search size={17} /><span>Search anything</span><kbd>⌘ K</kbd></Link>
         </div>
         <div className="serene-hero-links">
           <Link href="/games"><Gamepad2 size={15} /> Games</Link>
           <Link href="/browser"><Globe2 size={15} /> Browser</Link>
-          <Link href="/apps"><Sparkles size={15} /> Apps</Link>
         </div>
       </section>
 
@@ -56,7 +54,7 @@ export default function Home() {
           <div className="serene-section-head"><span>recent</span><Link href="/games">library <ArrowUpRight size={13} /></Link></div>
           {recent.length ? <div className="serene-recent-list">{recent.slice(0, 4).map((game) => game && <Link href={`/games/${game.id}`} key={game.id}><span>{game.title}</span><small>{game.category}</small><ArrowUpRight size={13} /></Link>)}</div> : <div className="serene-empty">play a game and it will appear here.</div>}
         </div>
-        <div className="serene-switch-card"><span>something else?</span><h3>browse the web or open a tool.</h3><div><Link href="/browser">browser <ArrowUpRight size={13} /></Link><Link href="/apps">apps <ArrowUpRight size={13} /></Link></div></div>
+        <div className="serene-switch-card"><span>Something else?</span><h3>Browse the web or open a tool.</h3><div><Link href="/browser">Browser <ArrowUpRight size={13} /></Link></div></div>
       </section>
     </div>
   );

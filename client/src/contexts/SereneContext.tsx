@@ -31,10 +31,10 @@ type SereneContextValue = {
   closeBrowserTab: (id: string) => void;
   updateBrowserTab: (id: string, patch: Partial<BrowserTab>) => void;
   bookmarks: string[];
-  addBookmark: (url: string) => void;
+  addBookmark: (url: string, title?: string) => void;
   removeBookmark: (url: string) => void;
   browserHistory: string[];
-  addHistory: (url: string) => void;
+  addHistory: (url: string, title?: string) => void;
   clearLocalData: () => void;
 };
 
@@ -57,7 +57,7 @@ export function SereneProvider({ children }: { children: ReactNode }) {
   const [saved] = useState(readState);
   const { user } = useAuth();
   const [theme, setThemeState] = useState<ThemeId>((saved.theme as ThemeId) ?? "white");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(saved.sidebarCollapsed ?? false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(saved.sidebarCollapsed ?? true);
   const [favorites, setFavorites] = useState(saved.favorites ?? []);
   const [recentGames, setRecentGames] = useState(saved.recentGames ?? []);
   const [appearance, setAppearanceState] = useState<AppearanceSettings>({ ...defaultAppearance, ...(saved.appearance ?? {}) });
@@ -87,9 +87,9 @@ export function SereneProvider({ children }: { children: ReactNode }) {
     });
   }, [activeBrowserTab]);
   const updateBrowserTab = useCallback((id: string, patch: Partial<BrowserTab>) => setBrowserTabs((tabs) => tabs.map((tab) => tab.id === id ? { ...tab, ...patch } : tab)), []);
-  const addBookmark = useCallback((url: string) => {
+  const addBookmark = useCallback((url: string, title = "") => {
     setBookmarks((current) => current.includes(url) ? current : [url, ...current]);
-    if (user) void fetch("/api/bookmarks", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }).catch(() => undefined);
+    if (user) void fetch("/api/bookmarks", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, title }) }).catch(() => undefined);
   }, [user]);
   const removeBookmark = useCallback((url: string) => {
     setBookmarks((current) => current.filter((item) => item !== url));
@@ -98,7 +98,7 @@ export function SereneProvider({ children }: { children: ReactNode }) {
       if (bookmark) void fetch(`/api/bookmarks/${bookmark.id}`, { method: "DELETE", credentials: "include" });
     }).catch(() => undefined);
   }, [user]);
-  const addHistory = useCallback((url: string) => { setBrowserHistory((current) => [url, ...current.filter((item) => item !== url)].slice(0, 30)); if (user) void fetch("/api/browser/history", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); }, [user]);
+  const addHistory = useCallback((url: string, title = "") => { setBrowserHistory((current) => [url, ...current.filter((item) => item !== url)].slice(0, 30)); if (user) void fetch("/api/browser/history", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, title }) }); }, [user]);
   const clearLocalData = useCallback(() => {
     setFavorites([]); setRecentGames([]); setBookmarks([]); setBrowserHistory([]); setBrowserTabs([initialTab]); setActiveBrowserTab(initialTab.id);
   }, []);

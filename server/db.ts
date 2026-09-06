@@ -24,6 +24,7 @@ export type User = {
   avatarFrame: string;
   siteTheme: string;
   particles: string;
+  bannerColor: string;
   stars: number;
   role: "user" | "admin" | "owner";
   ownedItems: string[];
@@ -43,6 +44,7 @@ type UserRow = {
   avatar_frame: string;
   site_theme: string;
   particles: string;
+  banner_color: string;
   stars: number;
   role: "user" | "admin" | "owner";
   password_hash: string | null;
@@ -63,6 +65,7 @@ function mapUser(row: UserRow): User {
     avatarFrame: row.avatar_frame,
     siteTheme: row.site_theme,
     particles: row.particles,
+    bannerColor: row.banner_color,
     stars: row.stars,
     role: row.role,
     ownedItems: row.owned_items ?? [],
@@ -72,20 +75,20 @@ function mapUser(row: UserRow): User {
   };
 }
 
-const userSelect = sql`select u.id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, u.stars, u.role, u.password_hash, u.google_id, (select max(created_at)::date::text from stars_transactions where user_id = u.id and kind = 'daily') as last_daily, coalesce(array_agg(distinct pu.item_id) filter (where pu.item_id is not null), '{}') as owned_items from users u join profiles p on p.user_id = u.id left join purchases pu on pu.user_id = u.id`;
+const userSelect = sql`select u.id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, p.banner_color, u.stars, u.role, u.password_hash, u.google_id, (select max(created_at)::date::text from stars_transactions where user_id = u.id and kind = 'daily') as last_daily, coalesce(array_agg(distinct pu.item_id) filter (where pu.item_id is not null), '{}') as owned_items from users u join profiles p on p.user_id = u.id left join purchases pu on pu.user_id = u.id`;
 
 export async function findUserById(id: string): Promise<User | undefined> {
-  const rows = await sql<UserRow[]>`${userSelect} where u.id = ${id} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, u.stars, u.role, u.password_hash, u.google_id`;
+  const rows = await sql<UserRow[]>`${userSelect} where u.id = ${id} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, p.banner_color, u.stars, u.role, u.password_hash, u.google_id`;
   return rows[0] ? mapUser(rows[0]) : undefined;
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
-  const rows = await sql<UserRow[]>`${userSelect} where u.email = ${email} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, u.stars, u.role, u.password_hash, u.google_id`;
+  const rows = await sql<UserRow[]>`${userSelect} where u.email = ${email} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, p.banner_color, u.stars, u.role, u.password_hash, u.google_id`;
   return rows[0] ? mapUser(rows[0]) : undefined;
 }
 
 export async function findUserByGoogleId(googleId: string): Promise<User | undefined> {
-  const rows = await sql<UserRow[]>`${userSelect} where u.google_id = ${googleId} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, u.stars, u.role, u.password_hash, u.google_id`;
+  const rows = await sql<UserRow[]>`${userSelect} where u.google_id = ${googleId} group by u.id, p.user_id, u.email, u.username, p.display_name, p.bio, p.avatar_seed, p.avatar_animation, p.avatar_frame, p.site_theme, p.particles, p.banner_color, u.stars, u.role, u.password_hash, u.google_id`;
   return rows[0] ? mapUser(rows[0]) : undefined;
 }
 
@@ -114,8 +117,9 @@ export async function updateProfile(userId: string, patch: Record<string, string
     avatarFrame: patch.avatarFrame,
     siteTheme: patch.siteTheme,
     particles: patch.particles,
+    bannerColor: /^#[0-9a-f]{6}$/i.test(patch.bannerColor || "") ? patch.bannerColor : undefined,
   };
-  await sql`update profiles set display_name = coalesce(${allowed.displayName ?? null}, display_name), bio = coalesce(${allowed.bio ?? null}, bio), avatar_seed = coalesce(${allowed.avatarSeed ?? null}, avatar_seed), avatar_animation = coalesce(${allowed.avatarAnimation ?? null}, avatar_animation), avatar_frame = coalesce(${allowed.avatarFrame ?? null}, avatar_frame), site_theme = coalesce(${allowed.siteTheme ?? null}, site_theme), particles = coalesce(${allowed.particles ?? null}, particles), updated_at = now() where user_id = ${userId}`;
+  await sql`update profiles set display_name = coalesce(${allowed.displayName ?? null}, display_name), bio = coalesce(${allowed.bio ?? null}, bio), avatar_seed = coalesce(${allowed.avatarSeed ?? null}, avatar_seed), avatar_animation = coalesce(${allowed.avatarAnimation ?? null}, avatar_animation), avatar_frame = coalesce(${allowed.avatarFrame ?? null}, avatar_frame), site_theme = coalesce(${allowed.siteTheme ?? null}, site_theme), particles = coalesce(${allowed.particles ?? null}, particles), banner_color = coalesce(${allowed.bannerColor ?? null}, banner_color), updated_at = now() where user_id = ${userId}`;
   return findUserById(userId);
 }
 
@@ -155,7 +159,7 @@ export async function claimDailyStars(userId: string): Promise<{ user: User; rew
 
 export async function buyItem(userId: string, itemId: string): Promise<{ user: User; item: { price: number; kind: string; value: string } } | { error: "missing" | "owned" | "insufficient" }> {
   const result = await sql.begin(async (transaction) => {
-    const items = await transaction<{ price: number; kind: string; value: string }[]>`select price, kind, value from shop_items where id = ${itemId}`;
+    const items = await transaction<{ price: number; kind: string; value: string }[]>`select price, kind, value from shop_items where id = ${itemId} and active = true`;
     if (!items[0]) return "missing" as const;
     const purchased = await transaction`select 1 from purchases where user_id = ${userId} and item_id = ${itemId} limit 1`;
     if (purchased.length) return "owned" as const;
