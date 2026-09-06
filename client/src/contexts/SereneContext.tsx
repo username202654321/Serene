@@ -132,11 +132,6 @@ export function SereneProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty("--theme-background", option.background);
     document.documentElement.style.setProperty("--theme-surface", option.surface);
     document.documentElement.style.setProperty("--theme-secondary", option.secondary);
-    const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (icon) {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#050608"/><path d="M43 9c-4 2-7 7-7 13 0 11 8 20 19 20-5 8-14 13-24 13C16 55 5 44 5 29 5 16 14 5 27 3c6-1 11 1 16 6Z" fill="${option.color}"/></svg>`;
-      icon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-    }
   }, [theme, appearance]);
 
   useEffect(() => {

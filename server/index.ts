@@ -45,6 +45,17 @@ async function requireAdmin(req: Request, res: Response) {
   }
   return user;
 }
+async function ensureStarterChat(userId: string) {
+  return sql.begin(async (transaction) => {
+    await transaction`select pg_advisory_xact_lock(hashtext('serene-starter-chat'))`;
+    let servers = await transaction<{ id: string }[]>`select id from chat_servers where name = 'Serene Commons' limit 1`;
+    const serverId = servers[0]?.id ?? (await transaction<{ id: string }[]>`insert into chat_servers (name, icon, owner_id) values ('Serene Commons', 'S', ${userId}) returning id`)[0].id;
+    let categories = await transaction<{ id: string }[]>`select id from chat_categories where server_id = ${serverId} and name = 'Start here' limit 1`;
+    const categoryId = categories[0]?.id ?? (await transaction<{ id: string }[]>`insert into chat_categories (server_id, name) values (${serverId}, 'Start here') returning id`)[0].id;
+    await transaction`insert into chat_channels (category_id, name) values (${categoryId}, 'welcome'), (${categoryId}, 'general') on conflict (category_id, name) do nothing`;
+    return serverId;
+  });
+}
 function normalizeUsername(value: string) { return value.trim().toLowerCase(); }
 function validUsername(value: string) { return /^[a-z0-9_]{3,20}$/.test(value); }
 function passwordHash(password: string) { const salt = randomBytes(16).toString("hex"); return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`; }
@@ -283,6 +294,7 @@ app.post("/api/notifications/read-all", asyncRoute(async (req, res) => {
 app.get("/api/chat/servers", asyncRoute(async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  await ensureStarterChat(user.id);
   const servers = await sql`select id, name, icon, owner_id as "ownerId" from chat_servers order by name`;
   res.json({ servers });
 }));

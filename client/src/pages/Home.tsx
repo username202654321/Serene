@@ -5,8 +5,7 @@ import { useSerene } from "@/contexts/SereneContext";
 
 export default function Home() {
   const { recentGames, markPlayed } = useSerene();
-  const featured = games[0];
-  const quickGames = games.slice(1, 4);
+  const quickGames = games.slice(0, 4);
   const recent = recentGames.map((id) => games.find((game) => game.id === id)).filter(Boolean).slice(0, 3);
 
   return <div className="home-page serene-home page-enter">
@@ -24,19 +23,9 @@ export default function Home() {
       </div>
     </section>
 
-    <section className="serene-bottom-grid" aria-label="Serene quick access">
-      <div className="serene-feature-card">
-        <span className="eyebrow">Featured game</span>
-        <div className="serene-feature-preview" style={{ backgroundImage: `url(${featured.image})` }} />
-        <div className="serene-feature-copy">
-          <strong>{featured.title}</strong>
-          <p>{featured.category}</p>
-          <Link href={`/games/${featured.id}`} onClick={() => markPlayed(featured.id)} className="serene-play-link"><span>Open</span><ArrowUpRight size={14} /></Link>
-        </div>
-      </div>
-
+    <section className="serene-bottom-grid launcher-shelf" aria-label="Serene quick access">
       <div className="serene-mini-panel">
-        <div className="mini-panel-head"><span className="eyebrow">Continue playing</span></div>
+        <div className="mini-panel-head"><span className="eyebrow">Games</span></div>
         <div className="mini-game-list">
           {quickGames.map((game) => (
             <Link key={game.id} href={`/games/${game.id}`} className="mini-game-row" onClick={() => markPlayed(game.id)}>
