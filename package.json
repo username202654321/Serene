@@ -9,7 +9,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env --import tsx server/migrate.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "node --env-file=.env -e \"process.env.NODE_ENV='production'; import('./dist/index.js')\"",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "format": "prettier --write ."

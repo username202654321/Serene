@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, Gamepad2, Globe2, Home, Menu, MessageCircle, PackagePlus, Search, Settings2, ShoppingBag, Star, UserRound, X } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useSerene } from "@/contexts/SereneContext";
-import { Wordmark } from "@/components/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
+import { Wordmark } from "@/components/LogoMark";
 
 const navGroups = [
   { label: "Discover", items: [{ href: "/", label: "Home", icon: Home }, { href: "/games", label: "Games", icon: Gamepad2 }, { href: "/browser", label: "Browser", icon: Globe2 }] },
