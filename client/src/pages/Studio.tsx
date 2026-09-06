@@ -6,12 +6,12 @@ type Submission = { id: string; type: "game" | "app"; name: string; description:
 type Announcement = { id: string; title: string; body: string; status: "draft" | "published" };
 type Form = { type: "game" | "app"; name: string; description: string; url: string };
 const blank: Form = { type: "game", name: "", description: "", url: "" };
-const tabs = [{ id: "publish", icon: PackagePlus, label: "Publish" }, { id: "review", icon: Check, label: "Review" }, { id: "announce", icon: Bell, label: "Announcements" }, { id: "overview", icon: LayoutGrid, label: "Overview" }];
+const tabs = [{ id: "overview", icon: LayoutGrid, label: "Overview" }, { id: "publish", icon: PackagePlus, label: "Publish" }, { id: "review", icon: Check, label: "Review" }, { id: "announce", icon: Bell, label: "Announcements" }];
 async function api<T>(path: string, options?: RequestInit) { const response = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) }, ...options }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "Studio request failed."); return data as T; }
 
 export default function Studio() {
   const { user, loading: authLoading } = useAuth();
-  const [tab, setTab] = useState("publish"); const [form, setForm] = useState(blank); const [submissions, setSubmissions] = useState<Submission[]>([]); const [announcements, setAnnouncements] = useState<Announcement[]>([]); const [announcementBody, setAnnouncementBody] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [tab, setTab] = useState("overview"); const [form, setForm] = useState(blank); const [submissions, setSubmissions] = useState<Submission[]>([]); const [announcements, setAnnouncements] = useState<Announcement[]>([]); const [announcementBody, setAnnouncementBody] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const isAdmin = user?.role === "owner" || user?.role === "admin";
   const published = useMemo(() => submissions.filter((item) => item.status === "published"), [submissions]);
   const refresh = async () => { try { setLoading(true); const result = await api<{ submissions: Submission[] }>("/api/studio/submissions"); setSubmissions(result.submissions); if (isAdmin) { const noticeResult = await api<{ announcements: Announcement[] }>("/api/studio/announcements"); setAnnouncements(noticeResult.announcements); } } catch (err) { setError(err instanceof Error ? err.message : "Could not load Studio."); } finally { setLoading(false); } };

@@ -10,24 +10,23 @@ export default function Home() {
   const recent = recentGames.map((id) => games.find((game) => game.id === id)).filter(Boolean).slice(0, 3);
 
   return <div className="home-page serene-home page-enter">
-    <section className="serene-hero">
+    <section className="serene-hero" aria-label="Serene launcher">
       <div className="serene-hero-center">
-        <span className="home-eyebrow">A quiet digital room</span>
         <h1>Serene</h1>
-        <p>Games, browsing, and useful things with room to breathe.</p>
-        <Link href="/search" className="serene-search"><Search size={17} /><span>Search anything</span><kbd>Ctrl K</kbd></Link>
+        <p>a quieter place online.</p>
+        <Link href="/search" className="serene-search"><Search size={17} /><span>Search Serene...</span><kbd>Ctrl K</kbd></Link>
       </div>
 
       <div className="serene-hero-links">
         <Link href="/games"><Gamepad2 size={15} /> Games</Link>
         <Link href="/browser"><Globe2 size={15} /> Browser</Link>
-        <Link href={`/games/${featured.id}`} onClick={() => markPlayed(featured.id)}><Play size={14} fill="currentColor" /> Play</Link>
+        <Link href="/search"><Search size={14} /> Search</Link>
       </div>
     </section>
 
     <section className="serene-bottom-grid" aria-label="Serene quick access">
       <div className="serene-feature-card">
-        <span className="eyebrow">Featured</span>
+        <span className="eyebrow">Featured game</span>
         <div className="serene-feature-preview" style={{ backgroundImage: `url(${featured.image})` }} />
         <div className="serene-feature-copy">
           <strong>{featured.title}</strong>
@@ -37,7 +36,7 @@ export default function Home() {
       </div>
 
       <div className="serene-mini-panel">
-        <div className="mini-panel-head"><span className="eyebrow">Quick access</span></div>
+        <div className="mini-panel-head"><span className="eyebrow">Continue playing</span></div>
         <div className="mini-game-list">
           {quickGames.map((game) => (
             <Link key={game.id} href={`/games/${game.id}`} className="mini-game-row" onClick={() => markPlayed(game.id)}>
