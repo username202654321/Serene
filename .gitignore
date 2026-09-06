@@ -41,6 +41,7 @@ lerna-debug.log*
 
 # Runtime data
 data/serene-auth.json
+data/
 pids
 *.pid
 *.seed

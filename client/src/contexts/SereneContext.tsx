@@ -67,8 +67,8 @@ export function SereneProvider({ children }: { children: ReactNode }) {
   const [browserHistory, setBrowserHistory] = useState(saved.browserHistory ?? []);
 
   const setTheme = useCallback((nextTheme: ThemeId) => setThemeState(nextTheme), []);
-  const toggleFavorite = useCallback((id: string) => setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [id, ...current]), []);
-  const markPlayed = useCallback((id: string) => setRecentGames((current) => [id, ...current.filter((item) => item !== id)].slice(0, 6)), []);
+  const toggleFavorite = useCallback((id: string) => setFavorites((current) => { const favorite = !current.includes(id); if (user) void fetch(`/api/games/${id}/activity`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ favorite }) }); return favorite ? [id, ...current] : current.filter((item) => item !== id); }), [user]);
+  const markPlayed = useCallback((id: string) => { setRecentGames((current) => [id, ...current.filter((item) => item !== id)].slice(0, 6)); if (user) void fetch(`/api/games/${id}/activity`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ played: true }) }); }, [user]);
   const setAppearance = useCallback((patch: Partial<AppearanceSettings>) => setAppearanceState((current) => ({ ...current, ...patch })), []);
   const addBrowserTab = useCallback(() => {
     setBrowserTabs((tabs) => {
@@ -87,9 +87,18 @@ export function SereneProvider({ children }: { children: ReactNode }) {
     });
   }, [activeBrowserTab]);
   const updateBrowserTab = useCallback((id: string, patch: Partial<BrowserTab>) => setBrowserTabs((tabs) => tabs.map((tab) => tab.id === id ? { ...tab, ...patch } : tab)), []);
-  const addBookmark = useCallback((url: string) => setBookmarks((current) => current.includes(url) ? current : [url, ...current]), []);
-  const removeBookmark = useCallback((url: string) => setBookmarks((current) => current.filter((item) => item !== url)), []);
-  const addHistory = useCallback((url: string) => setBrowserHistory((current) => [url, ...current.filter((item) => item !== url)].slice(0, 30)), []);
+  const addBookmark = useCallback((url: string) => {
+    setBookmarks((current) => current.includes(url) ? current : [url, ...current]);
+    if (user) void fetch("/api/bookmarks", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }).catch(() => undefined);
+  }, [user]);
+  const removeBookmark = useCallback((url: string) => {
+    setBookmarks((current) => current.filter((item) => item !== url));
+    if (user) void fetch("/api/bookmarks", { credentials: "include" }).then((response) => response.json() as Promise<{ bookmarks: { id: string; url: string }[] }>).then((result) => {
+      const bookmark = result.bookmarks.find((item) => item.url === url);
+      if (bookmark) void fetch(`/api/bookmarks/${bookmark.id}`, { method: "DELETE", credentials: "include" });
+    }).catch(() => undefined);
+  }, [user]);
+  const addHistory = useCallback((url: string) => { setBrowserHistory((current) => [url, ...current.filter((item) => item !== url)].slice(0, 30)); if (user) void fetch("/api/browser/history", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); }, [user]);
   const clearLocalData = useCallback(() => {
     setFavorites([]); setRecentGames([]); setBookmarks([]); setBrowserHistory([]); setBrowserTabs([initialTab]); setActiveBrowserTab(initialTab.id);
   }, []);
@@ -97,6 +106,19 @@ export function SereneProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user?.siteTheme && themeOptions.some((item) => item.id === user.siteTheme)) setThemeState(user.siteTheme as ThemeId);
   }, [user?.siteTheme]);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetch("/api/bookmarks", { credentials: "include" }).then((response) => response.json() as Promise<{ bookmarks: { url: string }[] }>).then((result) => setBookmarks(result.bookmarks.map((item) => item.url))).catch(() => undefined);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void Promise.all([
+      fetch("/api/browser/history", { credentials: "include" }).then((response) => response.json() as Promise<{ history: { url: string }[] }>),
+      fetch("/api/games/activity", { credentials: "include" }).then((response) => response.json() as Promise<{ activity: { gameId: string; favorite: boolean; lastPlayedAt: string | null }[] }>),
+    ]).then(([historyResult, activityResult]) => { setBrowserHistory(historyResult.history.map((item) => item.url)); setFavorites(activityResult.activity.filter((item) => item.favorite).map((item) => item.gameId)); setRecentGames(activityResult.activity.filter((item) => item.lastPlayedAt).sort((a, b) => String(b.lastPlayedAt).localeCompare(String(a.lastPlayedAt))).map((item) => item.gameId).slice(0, 6)); }).catch(() => undefined);
+  }, [user]);
 
   useEffect(() => {
     const option = themeOptions.find((item) => item.id === theme) ?? themeOptions[0];

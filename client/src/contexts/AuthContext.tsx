@@ -13,6 +13,7 @@ export type UserProfile = {
   particles: string;
   stars: number;
   ownedItems: string[];
+  role: "user" | "admin" | "owner";
 };
 
 type AuthContextValue = {
@@ -25,6 +26,8 @@ type AuthContextValue = {
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
   buyItem: (itemId: string) => Promise<void>;
   claimDailyStars: () => Promise<number>;
+  equipItem: (itemId: string) => Promise<void>;
+  unequipItem: (kind: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -75,8 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
     return result.reward;
   }, []);
+  const equipItem = useCallback(async (itemId: string) => {
+    const result = await api<{ user: UserProfile }>("/api/profile/equip", { method: "POST", body: JSON.stringify({ itemId }) });
+    setUser(result.user);
+  }, []);
+  const unequipItem = useCallback(async (kind: string) => {
+    const result = await api<{ user: UserProfile }>("/api/profile/unequip", { method: "POST", body: JSON.stringify({ kind }) });
+    setUser(result.user);
+  }, []);
 
-  const value = useMemo(() => ({ user, loading, refresh, signup, login, logout, updateProfile, buyItem, claimDailyStars }), [user, loading, refresh, signup, login, logout, updateProfile, buyItem, claimDailyStars]);
+  const value = useMemo(() => ({ user, loading, refresh, signup, login, logout, updateProfile, buyItem, claimDailyStars, equipItem, unequipItem }), [user, loading, refresh, signup, login, logout, updateProfile, buyItem, claimDailyStars, equipItem, unequipItem]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
