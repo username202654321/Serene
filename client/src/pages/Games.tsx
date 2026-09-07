@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowUpRight, ExternalLink, Filter, Heart, Play, Search, Sli
 import { Link, Route, Switch } from "wouter";
 import { useSerene } from "@/contexts/SereneContext";
 
-type Game = { id: string; title: string; description: string; category: string; image: string; dateAdded: string; tags: string[]; popularity: number; url: string; embedSource: string; developer: string; version: string };
+type Game = { id: string; title: string; description: string; category: string; image: string; dateAdded: string; tags: string[]; popularity: number; url: string; embedSource: string; sourceFile?: string; developer: string; version: string };
 
 async function loadGames() {
   const response = await fetch("/api/catalog/games");
@@ -20,16 +20,27 @@ function GameDetail({ games, id }: { games: Game[]; id: string }) {
   const { favorites, toggleFavorite, markPlayed } = useSerene();
   const [started, setStarted] = useState(false);
   const [loadingGame, setLoadingGame] = useState(false);
+  const [gameLoadError, setGameLoadError] = useState(false);
+  useEffect(() => {
+    if (!started) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setStarted(false); };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", closeOnEscape); };
+  }, [started]);
   if (!game) return <div className="game-detail page-enter"><Link href="/games" className="back-link"><ArrowLeft size={15} /> Back to library</Link><div className="studio-empty">That game is no longer available.</div></div>;
   const favorite = favorites.includes(game.id);
   const gameUrl = game.embedSource || game.url;
-  const sourceUrl = game.embedSource || game.url;
+  const sourceUrl = game.url || game.embedSource;
   let sourceLabel = "Source not configured";
   if (sourceUrl) {
     try { sourceLabel = new URL(sourceUrl).hostname; } catch { sourceLabel = "Configured game source"; }
   }
-  const closePlayer = () => { setStarted(false); setLoadingGame(false); };
-  return <div className="game-detail page-enter"><Link href="/games" className="back-link"><ArrowLeft size={15} /> Back to library</Link><div className="game-detail-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(7,8,10,.96) 0%, rgba(7,8,10,.62) 56%, rgba(7,8,10,.12) 100%), url(${game.image})` }}><div className="game-detail-copy"><span className="eyebrow">{game.category} · {game.developer}</span><h1>{game.title}</h1><p>{game.description}</p><div className="detail-actions"><button className="primary-button" onClick={() => { setStarted(true); setLoadingGame(Boolean(gameUrl)); markPlayed(game.id); }}><Play size={15} fill="currentColor" /> {started ? "Playing now" : "Launch game"}</button><button className={`secondary-button ${favorite ? "is-favorite" : ""}`} onClick={() => toggleFavorite(game.id)}><Heart size={15} fill={favorite ? "currentColor" : "none"} /> {favorite ? "Saved" : "Save"}</button></div></div></div><section className="game-about"><div><span className="eyebrow">About this game</span><p>{game.description}</p></div><dl><div><dt>Category</dt><dd>{game.category}</dd></div><div><dt>Developer</dt><dd>{game.developer}</dd></div><div><dt>Version</dt><dd>{game.version}</dd></div><div><dt>Source</dt><dd>{sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceLabel} <ExternalLink size={11} /></a> : sourceLabel}</dd></div></dl></section>{started && <div className="game-player-modal" role="dialog" aria-modal="true" aria-label={`${game.title} player`}><div className="player-shell"><div className="player-topline"><span><span className="presence-dot" /> {loadingGame ? "Preparing game" : "Session active"}</span><button className="text-button" onClick={closePlayer}>Close player <X size={14} /></button></div><div className="player-viewport">{gameUrl ? <>{loadingGame && <div className="player-loading"><Sparkles size={24} /><strong>Opening {game.title}</strong><span>Preparing the game experience…</span></div>}<iframe title={game.title} src={gameUrl} allow="autoplay; fullscreen; gamepad" onLoad={() => setLoadingGame(false)} /></> : <><Sparkles size={30} /><strong>{game.title}</strong><span>This game is not playable yet because Studio has not configured a game URL.</span></>}</div></div></div>}</div>;
+  const launchGame = () => { setGameLoadError(false); setStarted(true); setLoadingGame(Boolean(gameUrl)); markPlayed(game.id); };
+  const closePlayer = () => { setStarted(false); setLoadingGame(false); setGameLoadError(false); };
+  const closeOnFrameEscape = (event: KeyboardEvent) => { if (event.key === "Escape") closePlayer(); };
+  return <div className="game-detail page-enter"><Link href="/games" className="back-link"><ArrowLeft size={15} /> Back to library</Link><div className="game-detail-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(7,8,10,.96) 0%, rgba(7,8,10,.62) 56%, rgba(7,8,10,.12) 100%), url(${game.image})` }}><div className="game-detail-copy"><span className="eyebrow">{game.category} · {game.developer}</span><h1>{game.title}</h1><p>{game.description}</p><div className="detail-actions"><button className="primary-button" onClick={launchGame}><Play size={15} fill="currentColor" /> {started ? "Playing now" : "Launch game"}</button><button className={`secondary-button ${favorite ? "is-favorite" : ""}`} onClick={() => toggleFavorite(game.id)}><Heart size={15} fill={favorite ? "currentColor" : "none"} /> {favorite ? "Saved" : "Save"}</button></div></div></div><section className="game-about"><div><span className="eyebrow">About this game</span><p>{game.description}</p></div><dl><div><dt>Category</dt><dd>{game.category}</dd></div><div><dt>Developer</dt><dd>{game.developer}</dd></div><div><dt>Version</dt><dd>{game.version}</dd></div><div><dt>Source</dt><dd>{sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceLabel} <ExternalLink size={11} /></a> : sourceLabel}</dd></div></dl></section>{started && <div className="game-player-modal" role="dialog" aria-modal="true" aria-label={`${game.title} player`}><div className="player-shell"><div className="player-topline"><span><span className="presence-dot" /> {loadingGame ? "Preparing game" : "Session active"}</span><button className="text-button" onClick={closePlayer}>Close player <X size={14} /></button></div><div className="player-viewport">{gameUrl ? gameLoadError ? <><Sparkles size={30} /><strong>Unable to open {game.title}</strong><span>The configured game source did not load. Check its URL in Studio.</span></> : <>{loadingGame && <div className="player-loading"><Sparkles size={24} /><strong>Opening {game.title}</strong><span>Preparing the game experience…</span></div>}<iframe title={game.title} src={gameUrl} allow="autoplay; fullscreen; gamepad" allowFullScreen onLoad={(event) => { setLoadingGame(false); window.focus(); try { event.currentTarget.contentWindow?.addEventListener("keydown", closeOnFrameEscape); } catch {} }} onError={() => { setLoadingGame(false); setGameLoadError(true); }} /></> : <><Sparkles size={30} /><strong>{game.title}</strong><span>This game is not playable yet because Studio has not configured a game URL.</span></>}</div></div></div>}</div>;
 }
 function Library({ games }: { games: Game[] }) {
   const [query, setQuery] = useState("");

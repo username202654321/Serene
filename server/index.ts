@@ -203,7 +203,7 @@ app.post("/api/profile/unequip", asyncRoute(async (req, res) => {
   res.json({ user: publicUser(updated as User) });
 }));
 app.get("/api/catalog/games", asyncRoute(async (_req, res) => {
-  const games = await sql`select id, title, description, thumbnail as image, url, embed_source as "embedSource", category, tags, developer, version, popularity, created_at as "dateAdded", status from games where status = 'published' order by created_at desc`;
+  const games = await sql`select id, title, description, thumbnail as image, url, embed_source as "embedSource", source_file as "sourceFile", category, tags, developer, version, popularity, created_at as "dateAdded", status from games where status = 'published' order by created_at desc`;
   res.json({ games });
 }));
 app.get("/api/catalog/apps", asyncRoute(async (_req, res) => {
@@ -389,8 +389,8 @@ app.get("/api/studio/submissions", asyncRoute(async (req, res) => {
   if (!user) return;
   const isAdmin = user.role === "owner" || user.role === "admin";
   const rows = isAdmin
-    ? await sql`select id, 'game' as type, title as name, description, url, status from games union all select id, 'app' as type, name, description, url, status from apps order by name`
-    : await sql`select g.id, 'game' as type, g.title as name, g.description, g.url, g.status from games g join game_submissions s on s.game_id = g.id where s.submitted_by = ${user.id} union all select a.id, 'app' as type, a.name, a.description, a.url, a.status from apps a join app_submissions s on s.app_id = a.id where s.submitted_by = ${user.id} order by name`;
+    ? await sql`select id, 'game' as type, title as name, description, url, source_file as "sourceFile", status from games union all select id, 'app' as type, name, description, url, null as "sourceFile", status from apps order by name`
+    : await sql`select g.id, 'game' as type, g.title as name, g.description, g.url, g.source_file as "sourceFile", g.status from games g join game_submissions s on s.game_id = g.id where s.submitted_by = ${user.id} union all select a.id, 'app' as type, a.name, a.description, a.url, null as "sourceFile", a.status from apps a join app_submissions s on s.app_id = a.id where s.submitted_by = ${user.id} order by name`;
   res.json({ submissions: rows });
 }));
 app.post("/api/studio/submissions", asyncRoute(async (req, res) => {
