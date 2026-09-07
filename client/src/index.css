@@ -205,6 +205,8 @@ kbd { margin-left: auto; padding: 2px 5px; border: 1px solid var(--line); border
 .game-card-foot { display: flex; justify-content: space-between; padding: 10px 2px 0; color: var(--muted); font-size: 9px; letter-spacing: .04em; }
 .library-footer { display: flex; justify-content: space-between; margin-top: 32px; color: var(--muted); font-size: 10px; }
 .library-footer span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.library-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 28px; color: var(--muted); font-size: 10px; }
+.library-pagination .icon-button:disabled { opacity: .35; cursor: not-allowed; }
 
 .game-detail .back-link { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; margin-bottom: 22px; transition: color .2s ease; }
 .game-detail .back-link:hover { color: var(--text); }

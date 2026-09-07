@@ -13,13 +13,13 @@ export default function Home() {
       <div className="serene-hero-center">
         <h1>Serene</h1>
         <p>a quieter place online.</p>
-        <Link href="/search" className="serene-search"><Search size={17} /><span>Search Serene...</span><kbd>Ctrl K</kbd></Link>
+        <Link href="/games" className="serene-search"><Search size={17} /><span>Search games...</span><kbd>Ctrl K</kbd></Link>
       </div>
 
       <div className="serene-hero-links">
         <Link href="/games"><Gamepad2 size={15} /> Games</Link>
         <Link href="/browser"><Globe2 size={15} /> Browser</Link>
-        <Link href="/search"><Search size={14} /> Search</Link>
+        <Link href="/games"><Search size={14} /> Search</Link>
       </div>
     </section>
 
